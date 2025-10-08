@@ -1,0 +1,84 @@
+name: Download M3U files
+
+# Runs daily at 05:00 Beijing Time (UTC+8). Converted to UTC this is 21:00 previous day.
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  download-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Create data directory
+        run: mkdir -p data
+
+      - name: Download eng.m3u and fra.m3u (with retries and status check)
+        run: |
+          set -eo pipefail
+
+          download_with_retries() {
+            local url="$1"; local out="$2"; local max_attempts=5; local attempt=1; local tmp="${out}.tmp"
+            while [ $attempt -le $max_attempts ]; do
+              echo "[Download] Attempt $attempt: $url -> $out"
+              # Write body to temp file and capture HTTP status code
+              status=$(curl -sS -w "%{http_code}" -o "$tmp" "$url" || true)
+              if [[ "$status" =~ ^2 ]]; then
+                mv "$tmp" "$out"
+                echo "[Download] Success: HTTP $status"
+                return 0
+              else
+                echo "[Download] Attempt $attempt failed: HTTP $status"
+                rm -f "$tmp" || true
+                # exponential backoff (2,4,8,16... seconds)
+                sleep $((2 ** attempt))
+                attempt=$((attempt + 1))
+              fi
+            done
+            echo "[Download] Failed to download $url after $max_attempts attempts"
+            return 1
+          }
+
+          download_failures=0
+
+          if ! download_with_retries "https://live.hacks.tools/iptv/languages/eng.m3u" data/eng.m3u; then
+            echo "[Download] WARNING: eng.m3u failed after retries; continuing without failing the workflow"
+            download_failures=1
+          fi
+
+          if ! download_with_retries "https://live.hacks.tools/iptv/languages/fra.m3u" data/fra.m3u; then
+            echo "[Download] WARNING: fra.m3u failed after retries; continuing without failing the workflow"
+            download_failures=1
+          fi
+
+          if [ "$download_failures" -ne 0 ]; then
+            echo "[Download] Summary: one or more downloads failed. Workflow will continue."
+          else
+            echo "[Download] All files downloaded successfully."
+          fi
+
+      - name: Commit and push changes if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/eng.m3u data/fra.m3u || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update eng.m3u and fra.m3u from live.hacks.tools"
+            git push
+          fi
+
+      - name: Upload data/ as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3u-files
+          path: data
