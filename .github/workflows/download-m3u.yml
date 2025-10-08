@@ -25,8 +25,8 @@ jobs:
         run: |
           set -eo pipefail
 
-          curl -fsSL "https://live.hacks.tools/iptv/languages/eng.m3u" -o eng.m3u >/dev/null 2>&1 || echo "[Download] WARNING: eng.m3u download failed"
-          curl -fsSL "https://live.hacks.tools/iptv/languages/fra.m3u" -o fra.m3u >/dev/null 2>&1 || echo "[Download] WARNING: fra.m3u download failed"
+          curl -fsSL "https://iptv.hacks.tools/api/download?url=https://live.hacks.tools/iptv/languages/eng.m3u" -o eng.m3u >/dev/null 2>&1 || echo "[Download] WARNING: eng.m3u download failed"
+          curl -fsSL "https://iptv.hacks.tools/api/download?url=https://live.hacks.tools/iptv/languages/fra.m3u" -o fra.m3u >/dev/null 2>&1 || echo "[Download] WARNING: fra.m3u download failed"
 
       - name: Commit and push changes if any
         run: |
