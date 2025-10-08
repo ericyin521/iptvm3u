@@ -18,8 +18,8 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Create data directory
-        run: mkdir -p data
+      - name: Ensure repository root writable
+        run: echo "Saving downloaded files to repository root"
 
       - name: Download eng.m3u and fra.m3u (with retries and status check)
         run: |
@@ -49,12 +49,12 @@ jobs:
 
           download_failures=0
 
-          if ! download_with_retries "https://live.hacks.tools/iptv/languages/eng.m3u" data/eng.m3u; then
+          if ! download_with_retries "https://live.hacks.tools/iptv/languages/eng.m3u" eng.m3u; then
             echo "[Download] WARNING: eng.m3u failed after retries; continuing without failing the workflow"
             download_failures=1
           fi
 
-          if ! download_with_retries "https://live.hacks.tools/iptv/languages/fra.m3u" data/fra.m3u; then
+          if ! download_with_retries "https://live.hacks.tools/iptv/languages/fra.m3u" fra.m3u; then
             echo "[Download] WARNING: fra.m3u failed after retries; continuing without failing the workflow"
             download_failures=1
           fi
@@ -69,7 +69,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/eng.m3u data/fra.m3u || true
+          git add eng.m3u fra.m3u || true
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
@@ -77,8 +77,10 @@ jobs:
             git push
           fi
 
-      - name: Upload data/ as workflow artifact
+      - name: Upload files as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: m3u-files
-          path: data
+          path: |
+            eng.m3u
+            fra.m3u
