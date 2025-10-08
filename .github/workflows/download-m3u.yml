@@ -1,9 +1,9 @@
 name: Download M3U files
 
-# Runs daily at 05:00 Beijing Time (UTC+8). Converted to UTC this is 21:00 previous day.
+# Runs daily at 03:00 Beijing Time (UTC+8). Converted to UTC this is 19:00 previous day.
 on:
   schedule:
-    - cron: '0 21 * * *'
+    - cron: '0 19 * * *'
   workflow_dispatch: {}
 
 permissions:
